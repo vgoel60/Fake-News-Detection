@@ -1,0 +1,60 @@
+# Importing the necessary libraries
+import numpy as np
+import pandas as pd
+import itertools
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import PassiveAggressiveClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# Importing the dataset
+df = pd.read_csv("news.csv")    # Data Source: Article Referred: https://data-flair.training/blogs/advanced-python-project-detecting-fake-news/
+df.shape    # Gives the dimensions of the data
+df.head()   # Returns the first 5 observations from the data, just to see what the data looks like.
+df[df.isna()].sum()   # Gives the number of missing observations for each column. We do not have any missing values.
+
+# Preparing the dataset
+news = df   # Creating copy of original data
+news["news"] = news["title"] +" \n" + news["text"]      # The original article ignores the titles of the news. I am trying to 
+                                                        # include the title in training.
+news.head()
+y = news["label"]    # Separating target variable
+x = news["news"]     # Separating independent variable
+x_train,x_test,y_train,y_test=train_test_split(x, y, test_size=0.1, random_state=7)   # Separating test and traning data
+
+# Deploying TfidfVectoriqzer & Passive Aggressive Classifier
+  # First, initializing TfidfVectorizer
+  my_vect = TfidfVectorizer(stop_words='english', max_df=0.6)  # Creating a TfidfVectorizer named my_vect using English as language and 
+                                                               # maximum document frequency 0.7
+      # max_df: any word with frequency greater than max_df will be considered as a 'stop word'. 
+      # These are common words such as 'the', 'and' etc. which appear frequently.
+      # The stop words do not add any value to the analysis and we need to identify these words for effective analysis
+tfidf_train=my_vect.fit_transform(x_train) # Fit my_vect and transform training as well as test set 
+tfidf_test=my_vect.transform(x_test)
+
+  # Initializing PassiveAggressiveClassifier
+  pac=PassiveAggressiveClassifier(max_iter=50)    # Creating the classifier as pac
+  pac.fit(tfidf_train,y_train)    # Fitting the classifier on the transformed data
+      # The default parameters applied in the Classifier:
+      # PassiveAggressiveClassifier(C=1.0, average=False, class_weight=None,
+      #                      early_stopping=False, fit_intercept=True,
+      #                      loss='hinge', max_iter=50, n_iter_no_change=5,
+      #                      n_jobs=None, random_state=None, shuffle=True,
+      #                      tol=0.001, validation_fraction=0.1, verbose=0,
+      #                      warm_start=False)
+
+# Predicting on test set
+y_pred=pac.predict(tfidf_test)
+
+# Performance Evaluation
+score=accuracy_score(y_test,y_pred)
+print(f'Accuracy: {round(score*100,2)}%')
+  # Output: Accuracy: 95.11%
+  # This accuracy is even better than the one obtained in the original document. This is because I have included additional data
+  # in the form of titles in the training data, which helps train the algorithm better.
+confusion_matrix(y_test,y_pred, labels=['FAKE','REAL'])
+  # Output: array([[299,  14],
+  #               [ 17, 304]], dtype=int64)
+  #         Confusion matrix is another representation of performance of the model. We have 299 Correct Predictions of FAKE 
+  #         and 304 of REAL; 17 Incorrect Predictions of FAKE and 14 of REAL.
+# Article Referred: https://data-flair.training/blogs/advanced-python-project-detecting-fake-news/ 
